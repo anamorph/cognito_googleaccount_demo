@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="google-signin-client_id" content="%APP_ID%.apps.googleusercontent.com">
+		<script src="https://sdk.amazonaws.com/js/aws-sdk-2.2.18.min.js"></script>
+		<link rel="stylesheet" href="screen.css" />
+	</head>
+	<body>
+		<div id="login_header">
+			<h1>Cognito/Google Account Demo</h1>
+		</div>
+		<div id="login_source">
+			<ul>
+				<li><a href="#" id="LoginWithGoogle"><div id="my-google-signin"></div></a></li>
+				<li><a href="#" onclick="signOut();"><div id="my-google-signout">Sign out</div></a></li>
+			</ul>
+		</div>
+		<div id="login_result">
+			Please sign-in.
+		</div>
+		<script>
+			var login_source = document.getElementById('login_source');
+			var result = document.getElementById('login_result');
+
+			function onSuccess(googleUser) {
+				console.log('Logged in as: ' + googleUser.getBasicProfile().getName());
+				result.innerHTML = 'hello, ' + googleUser.getBasicProfile().getName() + ' (' + googleUser.getBasicProfile().getEmail() + ') !';
+				/*
+				initializing cognito identity credentials pool:
+				once we have the pool id, then we can map the tokens obtained by each
+				identity provider at once.
+				*/
+				AWS.config.region = '%AWS_COGNITO_REGION%';
+				AWS.config.credentials = new AWS.CognitoIdentityCredentials({
+					IdentityPoolId: '%AWS_COGNITO_IDENTITY_POOL_ID%',
+					Logins: {
+						'accounts.google.com' : googleUser.getAuthResponse().id_token
+					}
+				});
+				AWS.config.credentials.get(function(err) {
+						if (err) {
+								console.log("Error: "+err);
+								return;
+						}
+						console.log("Cognito Identity Id: " + AWS.config.credentials.identityId);
+						result.innerHTML = result.innerHTML + '<br/>Cognito Identity Id: ' + AWS.config.credentials.identityId;
+				});
+			}
+			function onFailure(error) {
+				console.log(error);
+			}
+			function renderButton() {
+				gapi.signin2.render('my-google-signin', {
+					'scope': 'https://www.googleapis.com/auth/plus.login',
+					'width': 156,
+					'height': 32,
+					'longtitle': false,
+					'theme': 'dark',
+					'onsuccess': onSuccess,
+					'onfailure': onFailure
+				});
+			}
+			function signOut() {
+				var auth2 = gapi.auth2.getAuthInstance();
+				auth2.signOut().then(function () {
+					result.innerHTML = 'Please sign-in.';
+					console.log('User signed out.');
+				});
+			}
+		</script>
+		<script src="https://apis.google.com/js/platform.js?onload=renderButton" async defer></script>
+	</body>
+</html>
